@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>多国语言版中国地图 | Multilingual China Map</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: "Microsoft YaHei", Arial, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        body {
+            line-height: 1.6;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            color: #1677ff;
+            font-size: 24px;
+            margin: 0 0 6px 0;
+        }
+
+        .header small {
+            color: #666;
+            font-size: 14px;
+            display: block;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+        }
+
+        #map-container {
+            height: 50vh;
+            min-height: 300px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            order: 2;
+        }
+
+        .input-container {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            order: 1;
+        }
+
+        @media (min-width: 768px) {
+            .container {
+                grid-template-columns: 350px 1fr;
+                grid-template-rows: auto auto;
+            }
+            #map-container {
+                order: 2;
+                height: 60vh;
+                grid-column: 2;
+                grid-row: 1 / 3;
+            }
+            .input-container {
+                grid-row: 1;
+                height: fit-content;
+            }
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            box-sizing: border-box;
+            transition: all 0.3s;
+        }
+
+        .mode-select {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin: 12px 0;
+        }
+
+        .mode-btn {
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            background: #f8f9fa;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .mode-btn.active {
+            background: #1677ff;
+            color: white;
+            box-shadow: 0 2px 6px rgba(22, 119, 255, 0.3);
+        }
+
+        .search-results {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 12px;
+            border: 1px solid #eee;
+            border-radius: 6px;
+        }
+
+        .result-item {
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            transition: all 0.2s;
+        }
+
+        .result-item:hover {
+            background: #f8f9fa;
+            transform: translateX(5px);
+        }
+
+        .nav-button {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: calc(100% - 40px);
+            max-width: 500px;
+            padding: 12px;
+            background: #28a745;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            border: none;
+            transition: all 0.3s;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .result-card {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            background: white;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            order: 3;
+        }
+
+        .route-step {
+            padding: 12px;
+            margin: 8px 0;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border-left: 4px solid;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .line-badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            color: white;
+            font-weight: bold;
+            min-width: 70px;
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .walk-badge {
+            background: #666 !important;
+        }
+
+        .input-group {
+            margin-bottom: 10px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+    </style>
+    <script type="text/javascript">
+        window._AMapSecurityConfig = {
+            securityJsCode: "3fceea5bdab5553f212d996d660caf80" // 替换为你的安全代码
+        };
+    </script>
+    <script src="https://webapi.amap.com/maps?v=2.0&key=a69c74e4d3331c33f01c6b636307681c&plugin=AMap.Driving,AMap.Transfer,AMap.Walking,AMap.PlaceSearch,AMap.Geolocation,AMap.Geocoder,AMap.ToolBar,AMap.Scale,AMap.MapType"></script>
+</head>
+<body>
+    <div class="header">
+        <h1>多国语言版中国地图</h1>
+        <small>Multilingual China Map Service</small>
+    </div>
+
+    <div class="container">
+        <div class="input-container">
+            <div id="main-panel">
+                <div class="input-group">
+                    <label for="city-input">城市：</label>
+                    <input type="text" id="city-input" class="input-field" placeholder="输入城市名称" value="广州">
+                </div>
+                <div class="input-group">
+                    <label for="start-input">起点：</label>
+                    <input type="text" id="start-input" class="input-field" placeholder="正在定位中..." onclick="showSearchPanel('start')">
+                </div>
+                <div class="input-group">
+                    <label for="end-input">终点：</label>
+                    <input type="text" id="end-input" class="input-field" placeholder="输入目的地" onclick="showSearchPanel('end')">
+                </div>
+
+                <div class="mode-select">
+                    <div class="mode-btn active" data-mode="driving">🚗 驾车</div>
+                    <div class="mode-btn" data-mode="transit">🚌 公交</div>
+                    <div class="mode-btn" data-mode="walking">🚶 步行</div>
+                </div>
+
+                <button class="input-field" style="background:#1677ff;color:white;" onclick="startPlanning()">
+                    🚀 开始智能规划
+                </button>
+            </div>
+
+            <div id="search-panel" style="display:none;">
+                <input type="text" id="search-input" class="input-field" placeholder="输入地点关键词">
+                <div class="search-results" id="search-results"></div>
+                <button class="input-field" style="margin-top:10px;" onclick="goBackToMain()">← 返回主界面</button>
+            </div>
+        </div>
+
+        <div id="map-container"></div>
+        <div id="result-card" class="result-card" style="display:none;"></div>
+        <button class="nav-button" id="nav-button" style="display:none;">🗺️ 实时导航</button>
+    </div>
+
+    <script>
+        let map = null;
+        let geocoder = null;
+        let currentMode = 'driving';
+        let currentPlanner = null;
+        let selectedLocation = null;
+        let currentSearchType = 'start';
+        let currentMarkers = [];
+        let currentRouteInfo = null;
+        let currentCity = '广州';
+
+        function initMap() {
+            map = new AMap.Map('map-container', {
+                resizeEnable: true,
+                zoom: 13,
+                center: [116.397428, 39.90923],
+                mapStyle: 'amap://styles/light',
+                features: ['bg', 'road', 'building']
+            });
+        
+            map.addControl(new AMap.ToolBar({ position: 'RT' }));
+            map.addControl(new AMap.Scale());
+            map.addControl(new AMap.MapType({
+                defaultType: 'normal',
+                position: 'LB'
+            }));
+        
+            // 直接初始化 geocoder
+            geocoder = new AMap.Geocoder({
+                city: currentCity
+            });
+        
+            new AMap.Geolocation({
+                enableHighAccuracy: true,
+                timeout: 10000
+            }).getCurrentPosition((status, result) => {
+                if (status === 'complete') {
+                    updateStartPosition([result.position.lng, result.position.lat]);
+                } else {
+                    document.getElementById('start-input').placeholder = '点击输入起点';
+                }
+            });
+        
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentMode = this.dataset.mode;
+                });
+            });
+        
+            document.getElementById('city-input').addEventListener('change', function() {
+                currentCity = this.value;
+            });
+        }
+
+        function updateStartPosition(lnglat) {
+            geocoder.getAddress(lnglat, (status, result) => {
+                if (status === 'complete' && result.regeocode) {
+                    document.getElementById('start-input').value = result.regeocode.formattedAddress;
+                }
+            });
+        }
+
+        function showSearchPanel(type) {
+            currentSearchType = type;
+            document.getElementById('main-panel').style.display = 'none';
+            document.getElementById('search-panel').style.display = 'block';
+            document.getElementById('search-input').value = '';
+            document.getElementById('search-input').focus();
+        }
+
+        function goBackToMain() {
+            document.getElementById('main-panel').style.display = 'block';
+            document.getElementById('search-panel').style.display = 'none';
+        }
+
+        document.getElementById('search-input').addEventListener('input', function() {
+            if(this.value.length < 2) return;
+            
+            new AMap.PlaceSearch({
+                pageSize: 10,
+                pageIndex: 1,
+                city: currentCity
+            }).search(this.value, (status, result) => {
+                const container = document.getElementById('search-results');
+                container.innerHTML = '';
+                
+                if(status === 'complete' && result.poiList.pois.length) {
+                    result.poiList.pois.forEach(poi => {
+                        const item = document.createElement('div');
+                        item.className = 'result-item';
+                        item.innerHTML = `
+                            <div style="font-weight:500;">${poi.name}</div>
+                            <div style="font-size:13px;color:#666;margin-top:4px;">
+                                <span>${poi.type || '地点'}</span>
+                                <span style="margin:0 8px">|</span>
+                                <span>${poi.address || '地址未提供'}</span>
+                            </div>
+                        `;
+                        item.onclick = () => selectLocation(poi);
+                        container.appendChild(item);
+                    });
+                }
+            });
+        });
+
+        function selectLocation(poi) {
+            currentMarkers.forEach(marker => marker.setMap(null));
+            currentMarkers = [];
+
+            document.getElementById(currentSearchType + '-input').value = poi.name;
+            goBackToMain();
+
+            const marker = new AMap.Marker({
+                position: poi.location,
+                map: map,
+                content: `<div style="background:#1677ff;color:white;padding:4px 8px;border-radius:4px;">
+                    ${poi.name}
+                </div>`
+            });
+            currentMarkers.push(marker);
+            
+            map.setCenter(poi.location);
+            document.getElementById('nav-button').style.display = 'block';
+            selectedLocation = poi;
+        }
+
+        document.getElementById('nav-button').addEventListener('click', async () => {
+            if(!selectedLocation) return;
+            
+            try {
+                const start = await geocodeAddress(document.getElementById('start-input').value);
+                const end = selectedLocation.location;
+                
+                const modeMapping = {
+                    driving: '0',
+                    transit: '1',
+                    walking: '2'
+                };
+                
+                const uri = `https://uri.amap.com/navigation?from=${start.lng},${start.lat}&to=${end.lng},${end.lat}&mode=${modeMapping[currentMode]}&src=web`;
+                window.open(uri, '_blank');
+            } catch (error) {
+                alert('导航启动失败: ' + error.message);
+            }
+        });
+
+        async function geocodeAddress(address) {
+            return new Promise((resolve, reject) => {
+                AMap.plugin('AMap.Geocoder', () => {
+                    const geocoder = new AMap.Geocoder({
+                        city: currentCity
+                    });
+                    geocoder.getLocation(address, (status, result) => {
+                        if (status === 'complete' && result.geocodes.length) {
+                            resolve(result.geocodes[0].location);
+                        } else {
+                            reject(new Error('地址解析失败: ' + address));
+                        }
+                    });
+                });
+            });
+        }
+        function startPlanning() {
+            map.clearMap();
+            if(currentPlanner) {
+                currentPlanner.clear();
+                currentPlanner = null;
+            }
+        
+            const start = document.getElementById('start-input').value;
+            const end = document.getElementById('end-input').value;
+            
+            if(!start || !end) {
+                alert('请填写完整的起点和目的地');
+                return;
+            }
+        
+            Promise.all([
+                geocodeAddress(start),
+                geocodeAddress(end)
+            ]).then(([startPos, endPos]) => {
+                if (!startPos || !endPos) {
+                    throw new Error('无法解析起点或终点地址');
+                }
+                switch(currentMode) {
+                    case 'driving':
+                        currentPlanner = new AMap.Driving({
+                            map: map,
+                            policy: AMap.DrivingPolicy.LEAST_TIME,
+                            showTraffic: true
+                        });
+                        break;
+                    case 'transit':
+                        currentPlanner = new AMap.Transfer({
+                            map: map,
+                            city: currentCity,
+                            policy: AMap.TransferPolicy.LEAST_TIME
+                        });
+                        break;
+                    case 'walking':
+                        currentPlanner = new AMap.Walking({
+                            map: map
+                        });
+                        break;
+                }
+        
+                // 修正 search 方法的参数
+                if (currentMode === 'transit') {
+                    currentPlanner.search(
+                        [startPos.lng, startPos.lat],
+                        [endPos.lng, endPos.lat],
+                        (status, result) => {
+                            const resultCard = document.getElementById('result-card');
+                            resultCard.style.display = 'none';
+                            
+                            if(status === 'complete') {
+                                if(currentMode === 'transit' && (!result.plans || result.plans.length === 0)){
+                                    alert('未找到公交路线，请尝试调整起点、终点或选择其他出行方式。');
+                                    return;
+                                }
+                                
+                                resultCard.style.display = 'block';
+                                currentRouteInfo = result;
+                                updateResultCard(result);
+                                setTimeout(() => {
+                                    resultCard.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                                }, 300);
+                            } else {
+                                alert('路径规划失败: ' + (result?.info || '未知错误'));
+                            }
+                        }
+                    );
+                } else {
+                    currentPlanner.search(
+                        [startPos.lng, startPos.lat],
+                        [endPos.lng, endPos.lat],
+                        (status, result) => {
+                            const resultCard = document.getElementById('result-card');
+                            resultCard.style.display = 'none';
+                            
+                            if(status === 'complete') {
+                                if(currentMode === 'transit' && (!result.plans || result.plans.length === 0)){
+                                    alert('未找到公交路线，请尝试调整起点、终点或选择其他出行方式。');
+                                    return;
+                                }
+                                
+                                resultCard.style.display = 'block';
+                                currentRouteInfo = result;
+                                updateResultCard(result);
+                                setTimeout(() => {
+                                    resultCard.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                                }, 300);
+                            } else {
+                                alert('路径规划失败: ' + (result?.info || '未知错误'));
+                            }
+                        }
+                    );
+                }
+            }).catch(error => {
+                console.error('路径规划失败:', error);
+                alert('路径规划失败: ' + error.message);
+            });
+        }
+
+ 
+        function updateResultCard(result) {
+            const card = document.getElementById('result-card');
+            if (!result || (currentMode === 'transit' && (!result.plans || result.plans.length === 0)) ||
+                (currentMode !== 'transit' && (!result.routes || result.routes.length === 0))) {
+                card.innerHTML = '<p>未找到可行路线，请尝试调整起点、终点或选择其他出行方式。</p>';
+                return;
+            }
+            let content = '';
+            
+            if(currentMode === 'transit') {
+                const plan = result.plans[0];
+                content = `
+                    <h3 style="margin-bottom:12px;color:#1677ff;">
+                        🚌 推荐公交路线 
+                        <span style="font-size:13px;color:#666;">
+                            ${(plan.distance/1000).toFixed(1)}公里/${Math.ceil(plan.time/60)}分钟
+                        </span>
+                    </h3>
+                    ${plan.segments.map((segment) => {
+                        if(segment.walking) {
+                            return `
+                                <div class="route-step">
+                                    <div class="line-badge walk-badge">
+                                         步行
+                                    </div>
+                                    <div>
+                                        <div style="font-weight:500;">步行约 ${segment.walking.distance} 米</div>
+                                        <div style="font-size:13px;color:#666;">预计用时 ${Math.ceil(segment.walking.time / 60)} 分钟</div>
+                                    </div>
+                                </div>
+                            `;
+                        } else if(segment.bus && segment.bus.buslines && segment.bus.buslines[0]) {
+                            const busline = segment.bus.buslines[0];
+                            return `
+                                <div class="route-step">
+                                    <div class="line-badge" style="background:#1677ff;">
+                                        ${busline.name}
+                                    </div>
+                                    <div>
+                                        <div style="font-weight:500;">从 ${busline.departure_stop.name} 上车，到 ${busline.arrival_stop.name} 下车</div>
+                                        <div style="font-size:13px;color:#666;">共 ${busline.via_num + 1} 站，预计用时 ${Math.ceil(busline.time / 60)} 分钟</div>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                        return '';
+                    }).join('')}
+                `;
+            } else if (currentMode === 'driving') {
+                const route = result.routes[0];
+                const distance = route.distance;
+                const time = route.time;
+
+                content = `
+                    <h3 style="margin-bottom:12px;color:#1677ff;">
+                        🚗 驾车路线 
+                        <span style="font-size:13px;color:#666;">
+                            ${(distance / 1000).toFixed(1)} 公里/${Math.ceil(time / 60)} 分钟
+                        </span>
+                    </h3>
+                    <div class="route-step">
+                        <div class="line-badge" style="background:#1677ff;">驾车</div>
+                        <div>
+                            <div style="font-weight:500;">沿规划路线行驶，全程约 ${(distance / 1000).toFixed(1)} 公里</div>
+                            <div style="font-size:13px;color:#666;">预计用时 ${Math.ceil(time / 60)} 分钟</div>
+                        </div>
+                    </div>
+                `;
+            } else if (currentMode === 'walking') {
+                const route = result.routes[0];
+                const distance = route.distance;
+                const time = route.time;
+
+                content = `
+                    <h3 style="margin-bottom:12px;color:#1677ff;">
+                        🚶 步行路线 
+                        <span style="font-size:13px;color:#666;">
+                            ${(distance / 1000).toFixed(1)} 公里/${Math.ceil(time / 60)} 分钟
+                        </span>
+                    </h3>
+                    <div class="route-step">
+                        <div class="line-badge walk-badge">步行</div>
+                        <div>
+                            <div style="font-weight:500;">沿规划路线步行，全程约 ${(distance / 1000).toFixed(1)} 公里</div>
+                            <div style="font-size:13px;color:#666;">预计用时 ${Math.ceil(time / 60)} 分钟</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            card.innerHTML = content;
+        }
+
+        window.onload = function () {
+            initMap();
+        };
+    </script>
+</body>
+</html>
+
